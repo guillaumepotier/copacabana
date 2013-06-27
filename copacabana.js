@@ -149,3 +149,8 @@ io.sockets.on( 'connection', function ( socket ) {
     socket.in( room ).emit( eventName, { hello: room } );
   } );
 } );
+
+// handeling Redis error
+storage.on( 'error', function ( err ) {
+  console.log( err );
+} );

@@ -35,11 +35,15 @@ prototype fast javascript applications.
 
 Copacabana implements these urls:
 
-`GET /:namespace/:collection`
-`POST /:namespace/:collection` + push event
-
-`GET /:namespace/:collection/:id`
-`PUT /:namespace/:collection/:id` + push event
-`DELETE /:namespace/:collection/:id` + push event
+- `GET /:namespace/:collection`
+- `POST /:namespace/:collection` + push event
+- `GET /:namespace/:collection/:id`
+- `PUT /:namespace/:collection/:id` + push event
+- `DELETE /:namespace/:collection/:id` + push event
 
 ### Socket events
+
+Events sent are formatted that way:
+
+`POST /:namespace/:collection`: `{ method: 'POST', collection: collection, data: object}`
+sent in `namespace` socket room
