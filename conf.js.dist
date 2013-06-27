@@ -11,6 +11,6 @@ module.exports = {
     logLevel: 1
   },
   events: {
-    name: 'news'
+    name: 'copabana'
   }
 }
