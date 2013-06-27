@@ -1,0 +1,13 @@
+module.exports = {
+  server: {
+    name: 'copacabana',
+    port: 1337,
+    version: '0.0.1'
+  },
+  storage: {
+    port: 6379
+  },
+  events: {
+    name: 'news'
+  }
+}
