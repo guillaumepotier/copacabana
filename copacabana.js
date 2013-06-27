@@ -9,6 +9,7 @@ var server = restify.createServer( configuration.server );
 // start socket.io listening on same restify server port
 // TODO: allow different port for socket.io ?
 var io = socketio.listen( server );
+io.set( 'log level', configuration.socket.logLevel || 42 );
 
 // create redis client
 var storage = redis.createClient( configuration.storage );
@@ -18,20 +19,20 @@ server
   .use(restify.fullResponse())
   .use(restify.bodyParser({ mapParams: false }))
   .use(restify.jsonp())
-  .use(restify.gzipResponse())
+  .use(restify.gzipResponse());
 
 var eventName = configuration.events.name;
 
 // copacabana running debug message
 server.listen( configuration.server.port, function () {
-    console.log('%s listening at %s', server.name, server.url)
+    console.log( '%s listening at %s', server.name, server.url );
 } );
 
 // copacabana api welcome page
 server.get( '/', function ( req, res ) {
   res.writeHead( 200 );
   res.end( 'Hello Copacabana !' );
-  io.sockets.emit( eventName, { hello: 'main page' } );
+  console.log( '[' + new Date().toUTCString() + '] GET /' );
 } );
 
 // GET resources collection
@@ -45,6 +46,7 @@ server.get( '/:namespace/:collection', function ( req, res, next ) {
       return next( err );
 
     res.send( 200, { success: { data: result } } );
+    return next();
   } );
 } );
 
@@ -64,7 +66,7 @@ server.post( '/:namespace/:collection', function ( req, res, next ) {
     object.id = ++result;
 
     storage.zadd( key, object.id, JSON.stringify( object ) );
-    io.sockets.emit( eventName, { method: 'POST', data: object } );
+    io.sockets.in( req.params.namespace ).emit( eventName, { method: 'POST', data: object } );
 
     res.send( 201, { success: { data: object } } );
     return next();
@@ -88,7 +90,7 @@ server.put( '/:namespace/:collection/:id', function ( req, res, next ) {
 
     object.id = req.params.id;
     storage.zadd( key, req.params.id, JSON.stringify( object ) );
-    io.sockets.emit( eventName, { method: 'PUT', data: object } );
+    io.sockets.in( req.params.namespace ).emit( eventName, { method: 'PUT', data: object } );
 
     res.send( 200, { success: { data: object } } );
     return next();
@@ -111,7 +113,7 @@ server.del( '/:namespace/:collection/:id', function ( req, res, next ) {
 
     object.id = req.params.id;
     storage.zrem( key, req.params.id );
-    io.sockets.emit( eventName, { method: 'DELETE', data: result } );
+    io.sockets.in( req.params.namespace ).emit( eventName, { method: 'DELETE', data: result } );
 
     res.send( 204, { success: { data: result } } );
     return next();
@@ -140,4 +142,10 @@ server.get( '/:namespace/:collection/:id', function ( req, res, next ) {
 
 io.sockets.on( 'connection', function ( socket ) {
   socket.emit( eventName, { hello: 'copacabana' } );
+
+  // join room
+  socket.on( 'room', function ( room ) {
+    socket.join( room );
+    socket.in( room ).emit( eventName, { hello: room } );
+  } );
 } );
