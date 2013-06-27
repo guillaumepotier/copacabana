@@ -66,7 +66,7 @@ server.post( '/:namespace/:collection', function ( req, res, next ) {
     object.id = ++result;
 
     storage.zadd( key, object.id, JSON.stringify( object ) );
-    io.sockets.in( req.params.namespace ).emit( eventName, { method: 'POST', data: object } );
+    io.sockets.in( req.params.namespace ).emit( eventName, { method: 'POST', collection: req.params.collection, data: object } );
 
     res.send( 201, { success: { data: object } } );
     return next();
@@ -90,7 +90,7 @@ server.put( '/:namespace/:collection/:id', function ( req, res, next ) {
 
     object.id = req.params.id;
     storage.zadd( key, req.params.id, JSON.stringify( object ) );
-    io.sockets.in( req.params.namespace ).emit( eventName, { method: 'PUT', data: object } );
+    io.sockets.in( req.params.namespace ).emit( eventName, { method: 'PUT', collection: req.params.collection, data: object } );
 
     res.send( 200, { success: { data: object } } );
     return next();
@@ -113,7 +113,7 @@ server.del( '/:namespace/:collection/:id', function ( req, res, next ) {
 
     object.id = req.params.id;
     storage.zrem( key, req.params.id );
-    io.sockets.in( req.params.namespace ).emit( eventName, { method: 'DELETE', data: result } );
+    io.sockets.in( req.params.namespace ).emit( eventName, { method: 'DELETE', collection: req.params.collection, data: result } );
 
     res.send( 204, { success: { data: result } } );
     return next();
