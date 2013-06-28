@@ -59,11 +59,14 @@ server.post( '/:namespace/:collection', function ( req, res, next ) {
 
   // TODO: test object not empty
 
-  storage.zcard( key, function ( err, result ) {
-    if ( err )
-      return next( err );
+  storage.zrange( key, -1, -1, function ( err, result ) {
+    var lastId = 0;
 
-    object.id = ++result;
+    try {
+      lastId = JSON.parse( result )[ 'id' ];
+    } catch ( err ) {}
+
+    object.id = lastId + 1;
 
     storage.zadd( key, object.id, JSON.stringify( object ) );
     io.sockets.in( req.params.namespace ).emit( eventName, { method: 'POST', collection: req.params.collection, data: object } );
@@ -88,7 +91,7 @@ server.put( '/:namespace/:collection/:id', function ( req, res, next ) {
     if ( !result )
       return res.send( 404, { code: 'Resource not found' } );
 
-    object.id = req.params.id;
+    object.id = Number( req.params.id );
     storage.zadd( key, req.params.id, JSON.stringify( object ) );
     io.sockets.in( req.params.namespace ).emit( eventName, { method: 'PUT', collection: req.params.collection, data: object } );
 
@@ -98,7 +101,8 @@ server.put( '/:namespace/:collection/:id', function ( req, res, next ) {
 } )
 
 server.del( '/:namespace/:collection/:id', function ( req, res, next ) {
-  var key = [ req.params.namespace, req.params.collection ].join( ':' );
+  var key = [ req.params.namespace, req.params.collection ].join( ':' ),
+    object = req.body || {};
 
   // TODO: test object not empty
 
@@ -112,11 +116,15 @@ server.del( '/:namespace/:collection/:id', function ( req, res, next ) {
       return res.send( 404, { code: 'Resource not found' } );
 
     object.id = req.params.id;
-    storage.zrem( key, req.params.id );
-    io.sockets.in( req.params.namespace ).emit( eventName, { method: 'DELETE', collection: req.params.collection, data: result } );
+    storage.zremrangebyscore( key, req.params.id, req.params.id, function ( err, result ) {
+      if ( err )
+        return next( err );
 
-    res.send( 204, { success: { data: result } } );
-    return next();
+      io.sockets.in( req.params.namespace ).emit( eventName, { method: 'DELETE', collection: req.params.collection, data: object.id } );
+
+      res.send( 204 );
+      return next();
+    } );
   } );
 } )
 
