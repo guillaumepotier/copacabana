@@ -67,6 +67,21 @@
 
           socket.on( 'copabana', function ( data ) {
             console.log( data );
+
+            if ( 'POST' === data.method ) {
+                console.log( 'create new todo' );
+                app.todos.socketAdd( data.data );
+            }
+
+            if ( 'DELETE' === data.method ) {
+                console.log( 'delete todo' );
+                app.todos.socketDelete( data.data );
+            }
+
+            if ( 'PUT' === data.method ) {
+                console.log( 'edit a todo' );
+                app.todos.socketEdit( data.data );
+            }
           });
 
           socket.on( 'connect', function () {

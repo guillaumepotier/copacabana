@@ -54,7 +54,24 @@ var copacabana = 'http://localhost:1337';
 			}
 
 			return collection;
-		}
+		},
+
+    socketAdd: function ( todo ) {
+      this.create( todo );
+    },
+
+    socketEdit: function ( todo ) {
+      this.get( todo.id ).set( todo );
+    },
+
+    // just remove model from collection and trigger delete event
+    socketDelete: function ( id ) {
+      if ( !this.get( id ) )
+        return;
+
+      this.get( id ).trigger( "delete" );
+      this.remove( this.get( id ) );
+    }
 	});
 
 	// Create our global collection of **Todos**.

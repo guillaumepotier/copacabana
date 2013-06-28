@@ -118,7 +118,7 @@ server.del( '/:namespace/:collection/:id', function ( req, res, next ) {
       return res.send( 404, { code: 'Resource not found' } );
 
     _deleteResource( req.params.namespace, req.params.collection, req.params.id, function ( err, result ) {
-      io.sockets.in( req.params.namespace ).emit( eventName, { method: 'DELETE', collection: req.params.collection, data: object } );
+      io.sockets.in( req.params.namespace ).emit( eventName, { method: 'DELETE', collection: req.params.collection, data: req.params.id } );
       res.send( 204 );
       return next();
     } );
