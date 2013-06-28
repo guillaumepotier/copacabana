@@ -35,13 +35,11 @@ server.get( '/', function ( req, res ) {
   console.log( '[' + new Date().toUTCString() + '] GET /' );
 } );
 
-// GET resources collection
+// ********************** API routes ********************************
 server.get( '/:namespace/:collection', function ( req, res, next ) {
-  var key = [ req.params.namespace, req.params.collection ].join( ':' );
+  console.log( '[' + new Date().toUTCString() + '] GET ' + _getKey( req.params.namespace, req.params.collection ) );
 
-  console.log( '[' + new Date().toUTCString() + '] GET ' + key );
-
-  storage.zrange( key, 0, -1, function ( err, result ) {
+  storage.zrange( _getKey( req.params.namespace, req.params.collection ), 0, -1, function ( err, result ) {
     if ( err )
       return next( err );
 
@@ -50,25 +48,20 @@ server.get( '/:namespace/:collection', function ( req, res, next ) {
   } );
 } );
 
-// POST create new resource inside new or existing collection
 server.post( '/:namespace/:collection', function ( req, res, next ) {
-  var key = [ req.params.namespace, req.params.collection ].join( ':' ),
-    object = req.body || {};
+  var object = req.body || {};
 
-  console.log( '[' + new Date().toUTCString() + '] POST ' + key );
+  console.log( '[' + new Date().toUTCString() + '] POST ' + _getKey( req.params.namespace, req.params.collection ) );
 
-  // TODO: test object not empty
+  if ( 'object' !== typeof object || _isEmptyObject( object ) ) {
+    res.send( 400, { code: 'You must give an object' } );
+    return next();
+  }
 
-  storage.zrange( key, -1, -1, function ( err, result ) {
-    var lastId = 0;
-
-    try {
-      lastId = JSON.parse( result )[ 'id' ];
-    } catch ( err ) {}
-
-    object.id = lastId + 1;
-
-    storage.zadd( key, object.id, JSON.stringify( object ) );
+  // get new resource id stored in namespace:collection:_index store
+  storage.incr( _getKey( req.params.namespace, req.params.collection, '_index' ), function ( err, result ) {
+    object.id = result;
+    storage.zadd( _getKey( req.params.namespace, req.params.collection ), object.id, JSON.stringify( object ) );
     io.sockets.in( req.params.namespace ).emit( eventName, { method: 'POST', collection: req.params.collection, data: object } );
 
     res.send( 201, { success: { data: object } } );
@@ -76,23 +69,36 @@ server.post( '/:namespace/:collection', function ( req, res, next ) {
   } );
 } );
 
-server.put( '/:namespace/:collection/:id', function ( req, res, next ) {
-  var key = [ req.params.namespace, req.params.collection ].join( ':' ),
-    object = req.body || {};
+server.get( '/:namespace/:collection/:id', function ( req, res, next ) {
+  console.log( '[' + new Date().toUTCString() + '] GET ' + _getKey( req.params.namespace, req.params.collection, req.params.id ) );
 
-  // TODO: test object not empty
+  // TODO: test id is an int
 
-  console.log( '[' + new Date().toUTCString() + '] PUT ' + [ key, req.params.id ].join( ':' ) );
-
-  storage.zrange( key, req.params.id - 1 , req.params.id - 1, function ( err, result ) {
+  storage.zrange( _getKey( req.params.namespace, req.params.collection ), req.params.id - 1 , req.params.id - 1, function ( err, result ) {
     if ( err )
       return next( err );
 
     if ( !result )
       return res.send( 404, { code: 'Resource not found' } );
 
-    object.id = Number( req.params.id );
-    storage.zadd( key, req.params.id, JSON.stringify( object ) );
+    res.send( 200, { success: { data: result } } );
+    return next();
+  } );
+} );
+
+server.put( '/:namespace/:collection/:id', function ( req, res, next ) {
+  var object = req.body || {};
+
+  if ( 'object' !== typeof object || _isEmptyObject( object ) ) {
+    res.send( 400, { code: 'You must give an object' } );
+    return next();
+  }
+
+  console.log( '[' + new Date().toUTCString() + '] PUT ' + _getKey( req.params.namespace, req.params.collection, req.params.id ) );
+
+  // delete resource from set and re-inset it modified
+  _deleteResource( req.params.namespace, req.params.collection, req.params.id, function ( err, result ) {
+    storage.zadd( _getKey( req.params.namespace, req.params.collection ), req.params.id, JSON.stringify( object ) );
     io.sockets.in( req.params.namespace ).emit( eventName, { method: 'PUT', collection: req.params.collection, data: object } );
 
     res.send( 200, { success: { data: object } } );
@@ -101,52 +107,44 @@ server.put( '/:namespace/:collection/:id', function ( req, res, next ) {
 } )
 
 server.del( '/:namespace/:collection/:id', function ( req, res, next ) {
-  var key = [ req.params.namespace, req.params.collection ].join( ':' ),
-    object = req.body || {};
 
-  // TODO: test object not empty
+  console.log( '[' + new Date().toUTCString() + '] DELETE ' + _getKey( req.params.namespace, req.params.collection, req.params.id ) );
 
-  console.log( '[' + new Date().toUTCString() + '] DELETE ' + [ key, req.params.id ].join( ':' ) );
-
-  storage.zrange( key, req.params.id - 1 , req.params.id - 1, function ( err, result ) {
+  storage.zrange( _getKey( req.params.namespace, req.params.collection ), req.params.id - 1 , req.params.id - 1, function ( err, object ) {
     if ( err )
       return next( err );
 
-    if ( !result )
+    if ( !object )
       return res.send( 404, { code: 'Resource not found' } );
 
-    object.id = req.params.id;
-    storage.zremrangebyscore( key, req.params.id, req.params.id, function ( err, result ) {
-      if ( err )
-        return next( err );
-
-      io.sockets.in( req.params.namespace ).emit( eventName, { method: 'DELETE', collection: req.params.collection, data: object.id } );
-
+    _deleteResource( req.params.namespace, req.params.collection, req.params.id, function ( err, result ) {
+      io.sockets.in( req.params.namespace ).emit( eventName, { method: 'DELETE', collection: req.params.collection, data: object } );
       res.send( 204 );
       return next();
     } );
   } );
 } )
 
-// Get resource
-server.get( '/:namespace/:collection/:id', function ( req, res, next ) {
-  var key = [ req.params.namespace, req.params.collection ].join( ':' );
+// ************************** Mixins ********************************
+var _getKey = function ( namespace, collection, id, fn ) {
+    return 'undefined' !== typeof id ? [ namespace, collection, id ].join( ':' ) : [ namespace, collection ].join( ':' );
+}
 
-  console.log( '[' + new Date().toUTCString() + '] GET ' + [ key, req.params.id ].join( ':' ) );
-
-  // TODO: test id is an int
-
-  storage.zrange( key, req.params.id - 1 , req.params.id - 1, function ( err, result ) {
+var _deleteResource = function ( namespace, collection, id, fn ) {
+  storage.zremrangebyscore( _getKey( namespace, collection ), id, id, function ( err, result ) {
     if ( err )
-      return next( err );
+      return fn( err, result );
 
-    if ( !result )
-      return res.send( 404, { code: 'Resource not found' } );
-
-    res.send( 200, { success: { data: result } } );
-    return next();
+    return fn( err, result );
   } );
-} );
+};
+
+_isEmptyObject = function ( obj ) {
+  for ( var property in obj )
+    return false;
+
+  return true;
+};
 
 io.sockets.on( 'connection', function ( socket ) {
   socket.emit( eventName, { hello: 'copacabana' } );
