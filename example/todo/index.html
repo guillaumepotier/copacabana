@@ -49,6 +49,9 @@
 			<button id="clear-completed">Clear completed (<%= completed %>)</button>
 			<% } %>
 		</script>
+		<script>
+		    var token = Math.random().toString(36).substring(7);
+		</script>
 		<script src="bower_components/todomvc-common/base.js"></script>
 		<script src="bower_components/jquery/jquery.js"></script>
 		<script src="bower_components/underscore/underscore.js"></script>
@@ -68,9 +71,14 @@
           socket.on( 'copabana', function ( data ) {
             console.log( data );
 
+            if ( data.token === token ) {
+                console.log( 'own push event return' );
+                return;
+            }
+
             if ( 'POST' === data.method ) {
                 console.log( 'create new todo' );
-                app.todos.socketAdd( data.data );
+                app.todos.add( data.data );
             }
 
             if ( 'DELETE' === data.method ) {

@@ -18,6 +18,7 @@ var storage = redis.createClient( configuration.storage );
 server
   .use(restify.fullResponse())
   .use(restify.bodyParser({ mapParams: false }))
+  .use(restify.queryParser())
   .use(restify.jsonp())
   .use(restify.gzipResponse());
 
@@ -62,7 +63,12 @@ server.post( '/:namespace/:collection', function ( req, res, next ) {
   storage.incr( _getKey( req.params.namespace, req.params.collection, '_index' ), function ( err, result ) {
     object.id = result;
     storage.zadd( _getKey( req.params.namespace, req.params.collection ), object.id, JSON.stringify( object ) );
-    io.sockets.in( req.params.namespace ).emit( eventName, { method: 'POST', collection: req.params.collection, data: object } );
+    io.sockets.in( req.params.namespace ).emit( eventName, {
+      method: 'POST',
+      token: req.query.token || null,
+      collection: req.params.collection,
+      data: object
+    } );
 
     res.send( 201, { success: { data: object } } );
     return next();
@@ -99,7 +105,12 @@ server.put( '/:namespace/:collection/:id', function ( req, res, next ) {
   // delete resource from set and re-inset it modified
   _deleteResource( req.params.namespace, req.params.collection, req.params.id, function ( err, result ) {
     storage.zadd( _getKey( req.params.namespace, req.params.collection ), req.params.id, JSON.stringify( object ) );
-    io.sockets.in( req.params.namespace ).emit( eventName, { method: 'PUT', collection: req.params.collection, data: object } );
+    io.sockets.in( req.params.namespace ).emit( eventName, {
+      method: 'PUT',
+      token: req.query.token || null,
+      collection: req.params.collection,
+      data: object
+    } );
 
     res.send( 200, { success: { data: object } } );
     return next();
@@ -118,7 +129,12 @@ server.del( '/:namespace/:collection/:id', function ( req, res, next ) {
       return res.send( 404, { code: 'Resource not found' } );
 
     _deleteResource( req.params.namespace, req.params.collection, req.params.id, function ( err, result ) {
-      io.sockets.in( req.params.namespace ).emit( eventName, { method: 'DELETE', collection: req.params.collection, data: req.params.id } );
+      io.sockets.in( req.params.namespace ).emit( eventName, {
+        method: 'DELETE',
+        token: req.query.token || null,
+        collection: req.params.collection,
+        data: req.params.id
+      } );
       res.send( 204 );
       return next();
     } );

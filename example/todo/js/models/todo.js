@@ -16,6 +16,10 @@ var app = app || {};
 			completed: false
 		},
 
+    url: function () {
+      return Backbone.Model.prototype.url.call( this ) + '?token=' + token || null;
+    },
+
 		// Toggle the `completed` state of this todo item.
 		toggle: function () {
 			this.save({
