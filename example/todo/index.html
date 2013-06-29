@@ -69,26 +69,23 @@
           var socket = io.connect( 'http://localhost:1337' );
 
           socket.on( 'copabana', function ( data ) {
+
+            // do not handle own push events
+            if ( data.token === token )
+                return;
+
             console.log( data );
 
-            if ( data.token === token ) {
-                console.log( 'own push event return' );
-                return;
-            }
-
-            if ( 'POST' === data.method ) {
-                console.log( 'create new todo' );
-                app.todos.add( data.data );
-            }
-
-            if ( 'DELETE' === data.method ) {
-                console.log( 'delete todo' );
-                app.todos.socketDelete( data.data );
-            }
-
-            if ( 'PUT' === data.method ) {
-                console.log( 'edit a todo' );
-                app.todos.socketEdit( data.data );
+            switch ( data.method ) {
+                case 'POST':
+                    app.todos.add( data.data );
+                    break;
+                case 'PUT':
+                    app.todos.edit( data.data );
+                    break;
+                case 'DELETE':
+                    app.todos.delete( data.data );
+                    break;
             }
           });
 
