@@ -44,7 +44,7 @@ server.get( '/:namespace/:collection', function ( req, res, next ) {
     if ( err )
       return next( err );
 
-    res.send( 200, { success: { data: result } } );
+    res.send( 200, result );
     return next();
   } );
 } );
@@ -63,14 +63,10 @@ server.post( '/:namespace/:collection', function ( req, res, next ) {
   storage.incr( _getKey( req.params.namespace, req.params.collection, '_index' ), function ( err, result ) {
     object.id = result;
     storage.zadd( _getKey( req.params.namespace, req.params.collection ), object.id, JSON.stringify( object ) );
-    io.sockets.in( req.params.namespace ).emit( eventName, {
-      method: 'POST',
-      token: req.query.token || null,
-      collection: req.params.collection,
-      data: object
-    } );
 
-    res.send( 201, { success: { data: object } } );
+    _pushEvent( object, 'POST', req );
+
+    res.send( 201, object );
     return next();
   } );
 } );
@@ -87,7 +83,7 @@ server.get( '/:namespace/:collection/:id', function ( req, res, next ) {
     if ( !result )
       return res.send( 404, { code: 'Resource not found' } );
 
-    res.send( 200, { success: { data: result } } );
+    res.send( 200, result );
     return next();
   } );
 } );
@@ -105,14 +101,10 @@ server.put( '/:namespace/:collection/:id', function ( req, res, next ) {
   // delete resource from set and re-inset it modified
   _deleteResource( req.params.namespace, req.params.collection, req.params.id, function ( err, result ) {
     storage.zadd( _getKey( req.params.namespace, req.params.collection ), req.params.id, JSON.stringify( object ) );
-    io.sockets.in( req.params.namespace ).emit( eventName, {
-      method: 'PUT',
-      token: req.query.token || null,
-      collection: req.params.collection,
-      data: object
-    } );
 
-    res.send( 200, { success: { data: object } } );
+    _pushEvent( object, 'PUT', req );
+
+    res.send( 200, object );
     return next();
   } );
 } )
@@ -129,12 +121,9 @@ server.del( '/:namespace/:collection/:id', function ( req, res, next ) {
       return res.send( 404, { code: 'Resource not found' } );
 
     _deleteResource( req.params.namespace, req.params.collection, req.params.id, function ( err, result ) {
-      io.sockets.in( req.params.namespace ).emit( eventName, {
-        method: 'DELETE',
-        token: req.query.token || null,
-        collection: req.params.collection,
-        data: req.params.id
-      } );
+
+      _pushEvent( req.params.id, 'DELETE', req );
+
       res.send( 204 );
       return next();
     } );
@@ -142,9 +131,18 @@ server.del( '/:namespace/:collection/:id', function ( req, res, next ) {
 } )
 
 // ************************** Mixins ********************************
+var _pushEvent = function ( object, method, req ) {
+  io.sockets.in( req.params.namespace ).emit( eventName, {
+    method: method,
+    token: req.query.token || null,
+    collection: req.params.collection,
+    data: object
+  } );
+};
+
 var _getKey = function ( namespace, collection, id, fn ) {
     return 'undefined' !== typeof id ? [ namespace, collection, id ].join( ':' ) : [ namespace, collection ].join( ':' );
-}
+};
 
 var _deleteResource = function ( namespace, collection, id, fn ) {
   storage.zremrangebyscore( _getKey( namespace, collection ), id, id, function ( err, result ) {

@@ -49,8 +49,8 @@ var copacabana = 'http://localhost:1337';
     parse: function ( data ) {
       var collection = [];
 
-			for (var i = 0; i < data.success.data.length; i++) {
-				collection[i] = this.model.prototype.parse( $.parseJSON( data.success.data[i] ) );
+			for (var i = 0; i < data.length; i++) {
+				collection[ i ] = this.model.prototype.parse( $.parseJSON( data[ i ] ) );
 			}
 
 			return collection;
@@ -61,7 +61,6 @@ var copacabana = 'http://localhost:1337';
     },
 
     delete: function ( id ) {
-      console.log('dlete', id)
       this.get( id ).trigger( "delete" );
       this.remove( this.get( id ) );
     }
