@@ -20,7 +20,7 @@ Install vendors
   ```
 
 Copy and edit config file
-  `cp conf.js.dist conf.js`
+  `cp conf/configuration.js.dist conf/configuration.js`
 
 Run Copacabana
   `node copacabana.js`
@@ -30,6 +30,11 @@ Run Copacabana
 Copacabana allows you to manage you backend API + push events for your frontend
 javascript apps. It is not designed to be used in production, rather to
 prototype fast javascript applications.
+
+## Example
+
+See Backbone Todo MVC in example/todo/index.html, with two tabs open
+
 
 ### API
 
