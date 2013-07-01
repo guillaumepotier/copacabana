@@ -46,13 +46,13 @@ var eventName = configuration.events.name;
 server.get( '/', function ( req, res ) {
   res.writeHead( 200 );
   res.end( 'Hello Copacabana !' );
-  console.log( '[' + new Date().toUTCString() + '] GET /' );
+  _log( req );
 } );
 
 // ********************** API routes ********************************
 server.get( '/:namespace/:collection', function ( req, res, next ) {
 
-  _log( 'GET', req );
+  _log( req );
 
   storage.zrange( _getKey( req ), 0, -1, function ( err, result ) {
     if ( err )
@@ -66,7 +66,7 @@ server.get( '/:namespace/:collection', function ( req, res, next ) {
 server.post( '/:namespace/:collection', function ( req, res, next ) {
   var object = req.body || {};
 
-  _log( 'POST', req );
+  _log( req );
 
   if ( 'object' !== typeof object || _isEmptyObject( object ) ) {
     res.send( 400, { code: 'You must give an object' } );
@@ -87,7 +87,7 @@ server.post( '/:namespace/:collection', function ( req, res, next ) {
 
 server.get( '/:namespace/:collection/:id', function ( req, res, next ) {
 
-  _log( 'GET', req );
+  _log( req );
 
   // TODO: test id is an int
 
@@ -111,7 +111,7 @@ server.put( '/:namespace/:collection/:id', function ( req, res, next ) {
     return next();
   }
 
-  _log( 'PUT', req );
+  _log( req );
 
   // delete resource from set and re-inset it modified
   _deleteResource( req, function ( err, result ) {
@@ -126,7 +126,7 @@ server.put( '/:namespace/:collection/:id', function ( req, res, next ) {
 
 server.del( '/:namespace/:collection/:id', function ( req, res, next ) {
 
-  _log( 'DELETE', req );
+  _log( req );
 
   storage.zrange( _getKey( req ), req.params.id - 1 , req.params.id - 1, function ( err, object ) {
     if ( err )
@@ -158,8 +158,8 @@ var _pushEvent = function ( object, method, req ) {
   } );
 };
 
-var _log = function ( method, req ) {
-  console.log( '[' + new Date().toUTCString() + '] ' + method + ' ' + _getKey( req, req.params.id || null ) );
+var _log = function ( req ) {
+  console.log( '[' + new Date().toUTCString() + '] ' + req.route.method + ' ' + req._url.href );
 };
 
 var _getKey = function ( req, suffix ) {
