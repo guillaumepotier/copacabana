@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Copacabana by guillaumepotier</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Copacabana</h1>
+        <p>Quick prototyping node+redis+socket.io API server for javascript applications</p>
+
+        <p class="view"><a href="https://github.com/guillaumepotier/copacabana">View the Project on GitHub <small>guillaumepotier/copacabana</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/guillaumepotier/copacabana/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/guillaumepotier/copacabana/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/guillaumepotier/copacabana">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>
+<a name="copacabana" class="anchor" href="#copacabana"><span class="octicon octicon-link"></span></a>Copacabana</h1>
+
+<p>Quick prototyping node+redis+socket API server for javascript applications</p>
+
+<h2>
+<a name="version" class="anchor" href="#version"><span class="octicon octicon-link"></span></a>Version</h2>
+
+<p>0.0.1</p>
+
+<h2>
+<a name="licence" class="anchor" href="#licence"><span class="octicon octicon-link"></span></a>Licence</h2>
+
+<p>MIT Licenced</p>
+
+<h2>
+<a name="install" class="anchor" href="#install"><span class="octicon octicon-link"></span></a>Install</h2>
+
+<p>Install vendors</p>
+
+<pre><code>  npm install restify
+  npm install socket.io
+  npm install redis
+</code></pre>
+
+<p>Copy and edit config file
+  <code>cp conf/configuration.js.dist conf/configuration.js</code></p>
+
+<p>Run Copacabana
+  <code>node copacabana.js</code></p>
+
+<h2>
+<a name="general-usage" class="anchor" href="#general-usage"><span class="octicon octicon-link"></span></a>General usage</h2>
+
+<p>Copacabana allows you to manage you backend API + push events for your frontend
+javascript apps. It is not designed to be used in production, rather to
+prototype fast javascript applications.</p>
+
+<h2>
+<a name="example" class="anchor" href="#example"><span class="octicon octicon-link"></span></a>Example</h2>
+
+<p>See Backbone Todo MVC in example/todo/index.html, with two tabs open</p>
+
+<h3>
+<a name="api" class="anchor" href="#api"><span class="octicon octicon-link"></span></a>API</h3>
+
+<p>Copacabana implements these urls:</p>
+
+<ul>
+<li><code>GET /:namespace/:collection</code></li>
+<li>
+<code>POST /:namespace/:collection</code> + push event</li>
+<li><code>GET /:namespace/:collection/:id</code></li>
+<li>
+<code>PUT /:namespace/:collection/:id</code> + push event</li>
+<li>
+<code>DELETE /:namespace/:collection/:id</code> + push event</li>
+</ul><h3>
+<a name="socket-events" class="anchor" href="#socket-events"><span class="octicon octicon-link"></span></a>Socket events</h3>
+
+<p>Events sent are formatted that way:</p>
+
+<p><code>POST /:namespace/:collection</code>: <code>{ method: 'POST', collection: collection, data: object}</code>
+sent in <code>namespace</code> socket room</p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/guillaumepotier">guillaumepotier</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
