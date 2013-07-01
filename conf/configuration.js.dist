@@ -1,7 +1,7 @@
 module.exports = {
   server: {
     name: 'copacabana',
-    port: 1337,
+    port: 80,
     version: '0.0.1'
   },
   storage: {
@@ -10,6 +10,7 @@ module.exports = {
   },
   socket: {
     enable: true,
+    port: 1337,
     logLevel: 1
   },
   events: {

@@ -1,7 +1,7 @@
 /*global Backbone */
 var app = app || {};
 
-var copacabana = 'http://localhost:1337';
+var copacabana = 'http://localhost:8080';
 
 (function () {
 	'use strict';
