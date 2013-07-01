@@ -1,4 +1,4 @@
-var configuration = require( './conf.js' ),
+var configuration = require( './conf/configuration.js' ),
   restify = require( 'restify' ),
   socketio = require('socket.io'),
   redis = require('redis');
@@ -6,10 +6,28 @@ var configuration = require( './conf.js' ),
 // register our restify copacabana app
 var server = restify.createServer( configuration.server );
 
+// copacabana running debug message
+server.listen( configuration.server.port, function () {
+    console.log( '%s listening at %s', server.name, server.url );
+} );
+
 // start socket.io listening on same restify server port
 // TODO: allow different port for socket.io ?
-var io = socketio.listen( server );
-io.set( 'log level', configuration.socket.logLevel || 42 );
+if ( configuration.socket.enable ) {
+  var io = socketio.listen( server );
+  io.set( 'log level', configuration.socket.logLevel || 42 );
+  console.log( 'io server is now running..' );
+
+  io.sockets.on( 'connection', function ( socket ) {
+    socket.emit( eventName, { hello: 'copacabana' } );
+
+    // join room
+    socket.on( 'room', function ( room ) {
+      socket.join( room );
+      socket.in( room ).emit( eventName, { hello: room } );
+    } );
+  } );
+}
 
 // create redis client
 var storage = redis.createClient( configuration.storage );
@@ -24,11 +42,6 @@ server
 
 var eventName = configuration.events.name;
 
-// copacabana running debug message
-server.listen( configuration.server.port, function () {
-    console.log( '%s listening at %s', server.name, server.url );
-} );
-
 // copacabana api welcome page
 server.get( '/', function ( req, res ) {
   res.writeHead( 200 );
@@ -38,9 +51,10 @@ server.get( '/', function ( req, res ) {
 
 // ********************** API routes ********************************
 server.get( '/:namespace/:collection', function ( req, res, next ) {
-  console.log( '[' + new Date().toUTCString() + '] GET ' + _getKey( req.params.namespace, req.params.collection ) );
 
-  storage.zrange( _getKey( req.params.namespace, req.params.collection ), 0, -1, function ( err, result ) {
+  _log( 'GET', req );
+
+  storage.zrange( _getKey( req ), 0, -1, function ( err, result ) {
     if ( err )
       return next( err );
 
@@ -52,7 +66,7 @@ server.get( '/:namespace/:collection', function ( req, res, next ) {
 server.post( '/:namespace/:collection', function ( req, res, next ) {
   var object = req.body || {};
 
-  console.log( '[' + new Date().toUTCString() + '] POST ' + _getKey( req.params.namespace, req.params.collection ) );
+  _log( 'POST', req );
 
   if ( 'object' !== typeof object || _isEmptyObject( object ) ) {
     res.send( 400, { code: 'You must give an object' } );
@@ -60,9 +74,9 @@ server.post( '/:namespace/:collection', function ( req, res, next ) {
   }
 
   // get new resource id stored in namespace:collection:_index store
-  storage.incr( _getKey( req.params.namespace, req.params.collection, '_index' ), function ( err, result ) {
+  storage.incr( _getKey( req, '_index' ), function ( err, result ) {
     object.id = result;
-    storage.zadd( _getKey( req.params.namespace, req.params.collection ), object.id, JSON.stringify( object ) );
+    storage.zadd( _getKey( req ), object.id, JSON.stringify( object ) );
 
     _pushEvent( object, 'POST', req );
 
@@ -72,11 +86,12 @@ server.post( '/:namespace/:collection', function ( req, res, next ) {
 } );
 
 server.get( '/:namespace/:collection/:id', function ( req, res, next ) {
-  console.log( '[' + new Date().toUTCString() + '] GET ' + _getKey( req.params.namespace, req.params.collection, req.params.id ) );
+
+  _log( 'GET', req );
 
   // TODO: test id is an int
 
-  storage.zrange( _getKey( req.params.namespace, req.params.collection ), req.params.id - 1 , req.params.id - 1, function ( err, result ) {
+  storage.zrange( _getKey( req ), req.params.id - 1 , req.params.id - 1, function ( err, result ) {
     if ( err )
       return next( err );
 
@@ -96,11 +111,11 @@ server.put( '/:namespace/:collection/:id', function ( req, res, next ) {
     return next();
   }
 
-  console.log( '[' + new Date().toUTCString() + '] PUT ' + _getKey( req.params.namespace, req.params.collection, req.params.id ) );
+  _log( 'PUT', req );
 
   // delete resource from set and re-inset it modified
-  _deleteResource( req.params.namespace, req.params.collection, req.params.id, function ( err, result ) {
-    storage.zadd( _getKey( req.params.namespace, req.params.collection ), req.params.id, JSON.stringify( object ) );
+  _deleteResource( req, function ( err, result ) {
+    storage.zadd( _getKey( req ), req.params.id, JSON.stringify( object ) );
 
     _pushEvent( object, 'PUT', req );
 
@@ -111,16 +126,16 @@ server.put( '/:namespace/:collection/:id', function ( req, res, next ) {
 
 server.del( '/:namespace/:collection/:id', function ( req, res, next ) {
 
-  console.log( '[' + new Date().toUTCString() + '] DELETE ' + _getKey( req.params.namespace, req.params.collection, req.params.id ) );
+  _log( 'DELETE', req );
 
-  storage.zrange( _getKey( req.params.namespace, req.params.collection ), req.params.id - 1 , req.params.id - 1, function ( err, object ) {
+  storage.zrange( _getKey( req ), req.params.id - 1 , req.params.id - 1, function ( err, object ) {
     if ( err )
       return next( err );
 
     if ( !object )
       return res.send( 404, { code: 'Resource not found' } );
 
-    _deleteResource( req.params.namespace, req.params.collection, req.params.id, function ( err, result ) {
+    _deleteResource( req, function ( err, result ) {
 
       _pushEvent( req.params.id, 'DELETE', req );
 
@@ -132,6 +147,9 @@ server.del( '/:namespace/:collection/:id', function ( req, res, next ) {
 
 // ************************** Mixins ********************************
 var _pushEvent = function ( object, method, req ) {
+  if ( !configuration.socket.enable )
+    return;
+
   io.sockets.in( req.params.namespace ).emit( eventName, {
     method: method,
     token: req.query.token || null,
@@ -140,12 +158,19 @@ var _pushEvent = function ( object, method, req ) {
   } );
 };
 
-var _getKey = function ( namespace, collection, id, fn ) {
-    return 'undefined' !== typeof id ? [ namespace, collection, id ].join( ':' ) : [ namespace, collection ].join( ':' );
+var _log = function ( method, req ) {
+  console.log( '[' + new Date().toUTCString() + '] ' + method + ' ' + _getKey( req, req.params.id || null ) );
 };
 
-var _deleteResource = function ( namespace, collection, id, fn ) {
-  storage.zremrangebyscore( _getKey( namespace, collection ), id, id, function ( err, result ) {
+var _getKey = function ( req, suffix ) {
+  if ( 'undefined' === typeof req.params.namespace || 'undefined' === typeof req.params.collection )
+    return '/' + suffix ? suffix : null;
+
+  return suffix ? [ req.params.namespace, req.params.collection, suffix ].join( ':' ) : [ req.params.namespace, req.params.collection ].join( ':' );
+};
+
+var _deleteResource = function ( req, fn ) {
+  storage.zremrangebyscore( _getKey( req ), req.params.id, req.params.id, function ( err, result ) {
     if ( err )
       return fn( err, result );
 
@@ -159,16 +184,6 @@ _isEmptyObject = function ( obj ) {
 
   return true;
 };
-
-io.sockets.on( 'connection', function ( socket ) {
-  socket.emit( eventName, { hello: 'copacabana' } );
-
-  // join room
-  socket.on( 'room', function ( room ) {
-    socket.join( room );
-    socket.in( room ).emit( eventName, { hello: room } );
-  } );
-} );
 
 // handeling Redis error
 storage.on( 'error', function ( err ) {

@@ -9,6 +9,7 @@ module.exports = {
     host: 'localhost'
   },
   socket: {
+    enable: true,
     logLevel: 1
   },
   events: {
