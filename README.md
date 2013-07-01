@@ -19,10 +19,12 @@ Install vendors
   npm install redis
   ```
 
-Copy and edit config file
+Copy and edit config file  
   `cp conf/configuration.js.dist conf/configuration.js`
 
-Run Copacabana
+Make sure Redis is running
+
+Then run Copacabana  
   `node copacabana.js`
 
 ## General usage
