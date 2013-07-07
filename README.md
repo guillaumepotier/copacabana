@@ -35,8 +35,10 @@ prototype fast javascript applications.
 
 ## Example
 
-See Backbone Todo MVC in example/todo/index.html, with two tabs open
+See [here](http://guillaumepotier.github.io/copacabana/example/copacabana-todo-mvc/)
+a live demo of famous Todo MVC Backbone running with copacabana.
 
+Source code could be found in `example/`
 
 ### API
 
